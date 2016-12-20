@@ -1,0 +1,19 @@
+## Custom gitignore for ChiroBat
+# This will expand as needed, non-generic whitelisting
+
+# ignore everything, and un-ignore all directories
+*
+!*/
+
+# let anything outside of the visual studio project be allowed in
+!/*
+
+# Chirobat/ directory
+!*.sln
+
+# Chirobat/Chirobat/ directory
+!**/engine/**
+!*.vcxproj
+!*.vcxproj.filters
+!**/Chirobat/*.cpp
+!**/Chirobat/*.h
