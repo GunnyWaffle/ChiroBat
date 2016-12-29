@@ -38,13 +38,13 @@
     <ClInclude Include="engine\Engine.h">
       <Filter>Header Files\engine</Filter>
     </ClInclude>
-    <ClInclude Include="engine\Memory.h">
-      <Filter>Header Files\engine</Filter>
-    </ClInclude>
     <ClInclude Include="engine\Patterns.h">
       <Filter>Header Files\engine</Filter>
     </ClInclude>
     <ClInclude Include="engine\Types.h">
+      <Filter>Header Files\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\Memory.h">
       <Filter>Header Files\engine</Filter>
     </ClInclude>
   </ItemGroup>

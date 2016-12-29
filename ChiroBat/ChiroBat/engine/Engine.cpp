@@ -10,7 +10,7 @@ namespace ChiroBat
 		{
 			funcRet systemState;
 			
-			systemState = Memory::MemoryManager::instance().init();
+			systemState = MEMORY.init(1024);
 			RET_ON_ERR(systemState, EXIT_FAILURE, "[Engine] Memory failed to initialize");
 
 			return EXIT_SUCCESS;
@@ -20,8 +20,8 @@ namespace ChiroBat
 		{
 			funcRet systemState;
 			
-			systemState = Memory::MemoryManager::instance().shutDown();
-			RET_ON_ERR(systemState, EXIT_FAILURE, "[Engine] Memory failed to initialize");
+			systemState = MEMORY.shutDown();
+			RET_ON_ERR(systemState, EXIT_FAILURE, "[Engine] Memory failed to shutdown");
 			
 			return EXIT_SUCCESS;
 		}

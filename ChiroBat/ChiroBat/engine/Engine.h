@@ -4,6 +4,8 @@
 #include "Types.h"
 #include "Patterns.h"
 
+#define ENGINE ChiroBat::Engine::Engine::instance()
+
 namespace ChiroBat
 {
 	namespace Engine

@@ -4,35 +4,73 @@
 #include "Types.h"
 #include "Patterns.h"
 
-#define MEMORY_POOL_SIZE (1024 * 1024)
+#define MEMORY ChiroBat::Memory::MemoryManager::instance()
 
 namespace ChiroBat
 {
 	namespace Memory
 	{
-		struct Block
-		{
-			byte* root;
-			uint32_t size;
-		};
-
 		class MemoryManager : public Patterns::Singleton<MemoryManager>
 		{
 		public:
-			funcRet init();
+			funcRet init(size_t poolSize);
 			funcRet shutDown();
-			
-			template<typename T>
-			void* alloc();
-		private:
-			byte* pool;
-		};
 
-		template<typename T>
-		void* MemoryManager::alloc()
-		{
-			return nullptr;
-		}
+			funcRet findMSB(size_t n);
+			funcRet findLSB(size_t n);
+
+			funcRet malloc(size_t size, void** pointer);
+			funcRet calloc(size_t size, void** pointer);
+			funcRet alignMalloc(size_t size, size_t align, void** pointer);
+			funcRet alignCalloc(size_t size, size_t align, void** pointer);
+			funcRet free(void* pointer);
+			
+		private:
+			struct Block;
+			struct FreeList
+			{
+				Block* prev;
+				Block* next;
+			};
+			struct Block
+			{
+				Block* neighbor; // preceeding physical block
+				size_t size; // block size
+				union
+				{
+					FreeList free; // doubly linked list of free blocks
+					byte data; // user data
+				} block; // block data
+			};
+			union Pool
+			{
+				Block block;
+				Pool* prevPool;
+			};
+			struct MapIndex
+			{
+				byte fl;
+				byte sl;
+			};
+
+			size_t maxRequestSize;
+			size_t poolSize;
+
+			byte SLgranularity;
+			byte SLbitDepth;
+			byte bitPack;
+			byte packedFLI;
+			size_t bitPackMask;
+			byte FLmax;
+
+			Pool* pool;
+			Block** freeBlocks;
+			size_t* freeMasks;
+
+			funcRet addPool();
+			funcRet addBlock(Block* block);
+			funcRet getIndex(size_t size, MapIndex* index);
+		};
 	}
 }
 

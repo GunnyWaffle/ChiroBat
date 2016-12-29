@@ -14,8 +14,10 @@ namespace ChiroBat
 				static Instance instance_object;
 				return instance_object;
 			}
+
 		protected:
 			Singleton& operator=(const Singleton&) = delete;
+
 		private:
 			virtual void SingletonHook() = 0;
 			class Instance : public T

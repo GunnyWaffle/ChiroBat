@@ -32,8 +32,18 @@ if (funcRet < 0)\
 #else
 
 #define LOG_ERR(string, ...)
-#define RET_ON_ERR(funcRet, errRet, string, ...)
-#define RET_ON_NEG_ERR(funcRet, errRet, string, ...)
+
+#define RET_ON_ERR(funcRet, errRet, string, ...) \
+do {\
+if (funcRet)\
+	return errRet;\
+}while (0)
+
+#define RET_ON_NEG_ERR(funcRet, errRet, string, ...) \
+do {\
+if (funcRet < 0)\
+	return errRet;\
+}while (0)
 
 #endif
 
