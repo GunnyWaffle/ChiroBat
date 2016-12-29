@@ -26,12 +26,13 @@ namespace ChiroBat
 			getIndex(maxRequestSize, &index);
 			FLmax = index.fl;
 
-			this->poolSize = offsetof(Block, block.data) + maxRequestSize;
+			this->poolSize = offsetof(Block, block.data) + maxRequestSize + sizeof(size_t);
 
 			freeBlocks = (Block**)_mm_malloc((FLmax + 1) * SLgranularity * sizeof(Block*), alignof(Block*));
-			freeMasks = (size_t*)_mm_malloc((FLmax + 1) * sizeof(size_t), alignof(size_t));
+			slMasks = (size_t*)_mm_malloc((FLmax + 1) * sizeof(size_t), alignof(size_t));
 			memset(freeBlocks, 0, (FLmax + 1) * SLgranularity * sizeof(Block*));
-			memset(freeMasks, 0, (FLmax + 1) * sizeof(size_t));
+			memset(slMasks, 0, (FLmax + 1) * sizeof(size_t));
+			flMask = 0;
 
 			pool = nullptr;
 			addPool();
@@ -53,7 +54,7 @@ namespace ChiroBat
 
 			_mm_free(pool);
 			_mm_free(freeBlocks);
-			_mm_free(freeMasks);
+			_mm_free(slMasks);
 
 			pool = nullptr;
 
@@ -112,6 +113,27 @@ namespace ChiroBat
 
 		funcRet MemoryManager::free(void* pointer)
 		{
+			RET_ON_ERR(!pointer, EXIT_FAILURE, "[Memory Manager] attempted to free a NULL pointer");
+
+			Block* block = (Block*)((byte*)pointer - offsetof(Block, block.data));
+
+			if (block->size & 2)
+			{
+				removeBlock(block->neighbor);
+				block->neighbor->size += sizeof(block->size) + block->size;
+				block = block->neighbor;
+			}
+
+			Block* next = (Block*)((byte*)block + block->size - offsetof(Block, size));
+
+			if (next->size && next->size & 1)
+			{
+				removeBlock(next);
+				block->size += sizeof(next->size) + next->size;
+			}
+
+			addBlock(block);
+
 			return EXIT_SUCCESS;
 		}
 
@@ -127,6 +149,8 @@ namespace ChiroBat
 			pool->block.size = maxRequestSize;
 			addBlock(&pool->block);
 
+			*(size_t*)((byte*)pool + poolSize - sizeof(size_t)) = 0; // fake block of size 0
+
 			return EXIT_SUCCESS;
 		}
 
@@ -134,13 +158,12 @@ namespace ChiroBat
 		{
 			MapIndex index;
 			getIndex(block->size, &index);
-			size_t bin = index.fl * SLgranularity + index.sl;
 
-			Block* head = freeBlocks[bin];
+			Block* head = freeBlocks[index.bin];
 
 			if (!head)
 			{
-				freeBlocks[bin] = block;
+				freeBlocks[index.bin] = block;
 				block->block.free.prev = nullptr;
 				block->block.free.next = nullptr;
 			}
@@ -156,6 +179,28 @@ namespace ChiroBat
 				if (block->block.free.next)
 					block->block.free.next->block.free.prev = block;
 			}
+
+			flMask |= (size_t)1 << index.fl;
+			slMasks[index.fl] |= (size_t)1 << index.sl;
+
+			return EXIT_SUCCESS;
+		}
+
+		funcRet MemoryManager::removeBlock(Block* block)
+		{
+			MapIndex index;
+			getIndex(block->size, &index);
+
+			if (block->block.free.prev)
+				block->block.free.prev->block.free.next = block->block.free.next;
+			if (block->block.free.next)
+				block->block.free.next->block.free.prev = block->block.free.prev;
+
+			if (freeBlocks[index.bin] == block)
+				freeBlocks[index.bin] = block->block.free.next;
+
+			slMasks[index.fl] &= ~(size_t)(freeBlocks[index.bin] == nullptr) << index.sl;
+			flMask &= ~(size_t)(slMasks[index.fl] == 0) << index.fl;
 
 			return EXIT_SUCCESS;
 		}
@@ -174,6 +219,8 @@ namespace ChiroBat
 				index->sl = (byte)(size >> (index->fl - SLbitDepth) ^ ((size_t)1 << SLbitDepth));
 				index->fl -= packedFLI;
 			}
+
+			index->bin = index->fl * SLgranularity + index->sl;
 
 			return EXIT_SUCCESS;
 		}

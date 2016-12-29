@@ -49,6 +49,7 @@ namespace ChiroBat
 			};
 			struct MapIndex
 			{
+				short bin;
 				byte fl;
 				byte sl;
 			};
@@ -65,10 +66,12 @@ namespace ChiroBat
 
 			Pool* pool;
 			Block** freeBlocks;
-			size_t* freeMasks;
+			size_t flMask;
+			size_t* slMasks;
 
 			funcRet addPool();
 			funcRet addBlock(Block* block);
+			funcRet removeBlock(Block* block);
 			funcRet getIndex(size_t size, MapIndex* index);
 		};
 	}
