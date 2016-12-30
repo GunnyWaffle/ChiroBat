@@ -67,11 +67,18 @@ namespace ChiroBat
 				return -1;
 
 			funcRet ret = sizeof(size_t) * 4 - 1;
-			int step = ret + 1;
+			int step = (ret + 1) >> 1;
 			size_t seeker = (size_t)1 << ret;
 			
-			while (!(seeker <= n && seeker << 1 > n))
-				seeker = (size_t)1 << (ret += (step >>= 1) * ((seeker <= n) * 2 - 1));
+			while (!(seeker <= n && (seeker << 1 > n || seeker << 1 == 0)))
+			{
+				if(step)
+					ret += step * ((seeker <= n) * 2 - 1);
+				else
+					ret += ((seeker <= n) * 2 - 1);
+				step >>= 1;
+				seeker = (size_t)1 << ret;
+			}
 
 			return ret;
 		}
@@ -81,32 +88,65 @@ namespace ChiroBat
 			return findMSB(n & (~n + 1));
 		}
 
-		funcRet MemoryManager::malloc(size_t size, void** pointer)
+		void* MemoryManager::malloc(size_t size)
 		{
-			return EXIT_SUCCESS;
+			if (size != (size & bitPackMask))
+				size += (~size & ~bitPackMask) + 1;
+
+			RET_ON_ERR(size > maxRequestSize, nullptr, "[Memory Manager] malloc size request of %zu exceeded maximum request size of %zu", size, maxRequestSize);
+
+			MapIndex index;
+			getIndex(size, &index);
+
+			Block* block = freeBlocks[index.bin];
+
+			while (block && blockSize(block) < size)
+				block = block->block.free.next;
+
+			if (!block)
+			{
+				if (findNextUsedBin(&index))
+				{
+					RET_ON_ERR(addPool(), nullptr, "[Memory Manager] malloc failed to allocate block of size %zu", size);
+					findNextUsedBin(&index);
+				}
+				block = freeBlocks[index.bin];
+			}
+			
+			splitBlock(block, size);
+
+			block->size &= ~(size_t)1;
+
+			Block* next;
+			if (!getNextBlock(block, &next))
+				next->size &= ~(size_t)2;
+			
+			return &block->block.data;
 		}
 
-		funcRet MemoryManager::calloc(size_t size, void** pointer)
+		void* MemoryManager::calloc(size_t size)
 		{
-			funcRet ret = malloc(size, pointer);
+			void* ret = malloc(size);
 
-			if (!ret)
-				memset(*pointer, 0, size);
+			if (ret)
+				memset(ret, 0, size);
 
 			return ret;
 		}
 
-		funcRet MemoryManager::alignMalloc(size_t size, size_t align, void** pointer)
+		void* MemoryManager::alignMalloc(size_t size, size_t align)
 		{
-			return EXIT_SUCCESS;
+			RET_ON_ERR(1, nullptr, "[Memory Manager] aligned malloc is not yet implemented, no address will be given out");
+
+			return nullptr;
 		}
 
-		funcRet MemoryManager::alignCalloc(size_t size, size_t align, void** pointer)
+		void* MemoryManager::alignCalloc(size_t size, size_t align)
 		{
-			funcRet ret = alignMalloc(size, align, pointer);
+			void* ret = alignMalloc(size, align);
 
-			if (!ret)
-				memset(*pointer, 0, size);
+			if (ret)
+				memset(ret, 0, size);
 
 			return ret;
 		}
@@ -116,20 +156,26 @@ namespace ChiroBat
 			RET_ON_ERR(!pointer, EXIT_FAILURE, "[Memory Manager] attempted to free a NULL pointer");
 
 			Block* block = (Block*)((byte*)pointer - offsetof(Block, block.data));
-
+			
 			if (block->size & 2)
 			{
 				removeBlock(block->neighbor);
-				block->neighbor->size += sizeof(block->size) + block->size;
+				block->neighbor->size += sizeof(block->size) + blockSize(block);
 				block = block->neighbor;
 			}
 
-			Block* next = (Block*)((byte*)block + block->size - offsetof(Block, size));
+			Block* next;
 
-			if (next->size && next->size & 1)
+			if (!getNextBlock(block, &next) && next->size & 1)
 			{
 				removeBlock(next);
-				block->size += sizeof(next->size) + next->size;
+				block->size += sizeof(next->size) + blockSize(next);
+			}
+
+			if (!getNextBlock(block, &next))
+			{
+				next->size |= 2;
+				next->neighbor = block;
 			}
 
 			addBlock(block);
@@ -142,7 +188,7 @@ namespace ChiroBat
 			RET_ON_ERR(!poolSize, EXIT_FAILURE, "[Memory Manager] attempted to expand the pool chain with no pool size");
 
 			Pool* temp = (Pool*)_mm_malloc(poolSize, alignof(Pool*));
-			RET_ON_ERR(!temp, EXIT_FAILURE, "[Memory Manager] failed to allocate memory pool");
+			RET_ON_ERR(!temp, EXIT_FAILURE, "[Memory Manager] failed to allocate new memory pool");
 			temp->prevPool = pool;
 			pool = temp;
 
@@ -157,7 +203,7 @@ namespace ChiroBat
 		funcRet MemoryManager::addBlock(Block* block)
 		{
 			MapIndex index;
-			getIndex(block->size, &index);
+			getIndex(blockSize(block), &index);
 
 			Block* head = freeBlocks[index.bin];
 
@@ -169,7 +215,7 @@ namespace ChiroBat
 			}
 			else
 			{
-				while (head->size < block->size && head->block.free.next)
+				while (blockSize(head) < blockSize(block) && head->block.free.next)
 					head = head->block.free.next;
 				
 				block->block.free.next = head->block.free.next;
@@ -180,6 +226,8 @@ namespace ChiroBat
 					block->block.free.next->block.free.prev = block;
 			}
 
+			block->size |= 1;
+
 			flMask |= (size_t)1 << index.fl;
 			slMasks[index.fl] |= (size_t)1 << index.sl;
 
@@ -189,7 +237,7 @@ namespace ChiroBat
 		funcRet MemoryManager::removeBlock(Block* block)
 		{
 			MapIndex index;
-			getIndex(block->size, &index);
+			getIndex(blockSize(block), &index);
 
 			if (block->block.free.prev)
 				block->block.free.prev->block.free.next = block->block.free.next;
@@ -201,6 +249,36 @@ namespace ChiroBat
 
 			slMasks[index.fl] &= ~(size_t)(freeBlocks[index.bin] == nullptr) << index.sl;
 			flMask &= ~(size_t)(slMasks[index.fl] == 0) << index.fl;
+
+			return EXIT_SUCCESS;
+		}
+
+		funcRet MemoryManager::splitBlock(Block* block, size_t size)
+		{
+			if (blockSize(block) - size < sizeof(size_t) * 2)
+				return EXIT_FAILURE;
+			
+			size_t oldSize = blockSize(block);
+			removeBlock(block);
+			block->size = size;
+
+			Block* newBlock;
+			getNextBlock(block, &newBlock); // return ignored because garbage data
+			
+			newBlock->size = oldSize - size - sizeof(size_t);
+			newBlock->neighbor = block;
+
+			addBlock(newBlock);
+			
+			return EXIT_SUCCESS;
+		}
+
+		funcRet MemoryManager::getNextBlock(Block* block, Block** next)
+		{
+			*next = (Block*)((byte*)block + blockSize(block) + offsetof(Block, size));
+
+			if (!blockSize(*next))
+				return EXIT_FAILURE;
 
 			return EXIT_SUCCESS;
 		}
@@ -223,6 +301,31 @@ namespace ChiroBat
 			index->bin = index->fl * SLgranularity + index->sl;
 
 			return EXIT_SUCCESS;
+		}
+
+		funcRet MemoryManager::findNextUsedBin(MapIndex* index)
+		{
+			size_t newSLMask = slMasks[index->fl] & ~(((size_t)1 << (index->sl + 1)) - 1);
+			
+			if (!newSLMask)
+			{
+				size_t newFLMask = flMask & ~(((size_t)1 << (index->fl + 1)) - 1);
+
+				RET_ON_ERR(!newFLMask, EXIT_FAILURE, "[Memory Manager] failed to find next used bin, a new pool needs to be added");
+
+				index->fl = findLSB(newFLMask);
+				newSLMask = slMasks[index->fl];
+			}
+
+			index->sl = findLSB(newSLMask);
+			index->bin = index->fl * SLgranularity + index->sl;
+
+			return EXIT_SUCCESS;
+		}
+
+		size_t MemoryManager::blockSize(Block* block)
+		{
+			return block->size & bitPackMask;
 		}
 	}
 }
