@@ -93,6 +93,8 @@ namespace ChiroBat
 			if (size != (size & bitPackMask))
 				size += (~size & ~bitPackMask) + 1;
 
+			size = size < sizeof(Block*) * 3 ? sizeof(Block*) * 3 : size;
+
 			RET_ON_ERR(size > maxRequestSize, nullptr, "[Memory Manager] malloc size request of %zu exceeded maximum request size of %zu", size, maxRequestSize);
 
 			MapIndex index;
@@ -266,7 +268,6 @@ namespace ChiroBat
 			getNextBlock(block, &newBlock); // return ignored because garbage data
 			
 			newBlock->size = oldSize - size - sizeof(size_t);
-			newBlock->neighbor = block;
 
 			addBlock(newBlock);
 			

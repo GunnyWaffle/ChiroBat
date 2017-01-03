@@ -19,24 +19,30 @@ int main()
 	//	printf("b %zu: MSB %d: LSB %d\n", i, MEMORY.findMSB(a), MEMORY.findLSB(a));
 	//}
 
-	size_t intCount = 5;
-	int* ints = (int*)MEMORY.malloc(sizeof(int) * intCount);
-	int* ints2 = (int*)MEMORY.calloc(sizeof(int) * intCount);
+	// problems:
+	// 1) over-stepping responsibilities between functions
+	// 2) no "don't grow" option
+
+#define TYPE char
+
+	size_t dataCount = 9;
+	TYPE* data = (TYPE*)MEMORY.malloc(sizeof(TYPE) * dataCount);
+	TYPE* data2 = (TYPE*)MEMORY.calloc(sizeof(TYPE) * dataCount);
 	
-	for (int i = 0; i < intCount; ++i)
+	for (TYPE i = 0; i < dataCount; ++i)
 	{
-		ints[i] = i;
-		ints2[i] += intCount + i;
+		data[i] = i;
+		data2[i] += dataCount + i;
 	}
 	
-	for (int i = 0; i < intCount; ++i)
-		printf("%d: %d\n", i, ints[i]);
+	for (TYPE i = 0; i < dataCount; ++i)
+		printf("%d: %d\n", i, data[i]);
 
-	for (int i = 0; i < intCount; ++i)
-		printf("%d: %d\n", i, ints2[i]);
+	for (TYPE i = 0; i < dataCount; ++i)
+		printf("%d: %d\n", i, data2[i]);
 	
-	MEMORY.free(ints);
-	MEMORY.free(ints2);
+	MEMORY.free(data);
+	MEMORY.free(data2);
 
 	engineState = ENGINE.shutDown();
 	RET_ON_ERR(engineState, EXIT_FAILURE, "[Main] Engine failed to shutdown");
