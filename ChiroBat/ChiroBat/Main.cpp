@@ -23,9 +23,9 @@ int main()
 	// 1) over-stepping responsibilities between functions
 	// 2) no "don't grow" option
 
-#define TYPE char
+#define TYPE int
 
-	size_t dataCount = 9;
+	size_t dataCount = 13;
 	TYPE* data = (TYPE*)MEMORY.malloc(sizeof(TYPE) * dataCount);
 	TYPE* data2 = (TYPE*)MEMORY.calloc(sizeof(TYPE) * dataCount);
 	

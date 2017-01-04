@@ -16,8 +16,8 @@ namespace ChiroBat
 			funcRet init(size_t poolSize);
 			funcRet shutDown();
 
-			funcRet findMSB(size_t n);
-			funcRet findLSB(size_t n);
+			int findMSB(size_t n);
+			int findLSB(size_t n);
 
 			void* malloc(size_t size);
 			void* calloc(size_t size);
@@ -63,6 +63,7 @@ namespace ChiroBat
 			byte packedFLI;
 			size_t bitPackMask;
 			byte FLmax;
+			byte minBlockSize;
 
 			Pool* pool;
 			Block** freeBlocks;
@@ -70,12 +71,12 @@ namespace ChiroBat
 			size_t* slMasks;
 
 			funcRet addPool();
-			funcRet addBlock(Block* block);
-			funcRet removeBlock(Block* block);
+			void addBlock(Block* block);
+			void removeBlock(Block* block);
 			funcRet splitBlock(Block* block, size_t size);
 			funcRet getNextBlock(Block* block, Block** next);
 			funcRet getIndex(size_t size, MapIndex* index);
-			funcRet findNextUsedBin(MapIndex* index);
+			Block* getBlock(size_t size);
 			size_t blockSize(Block* block);
 		};
 	}
