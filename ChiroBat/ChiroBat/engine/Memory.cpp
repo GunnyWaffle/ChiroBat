@@ -7,7 +7,7 @@ namespace ChiroBat
 {
 	namespace Memory
 	{
-		funcRet MemoryManager::init(size_t poolSize)
+		funcRet MemoryManager::init(size_t poolSize, bool expand)
 		{
 			RET_ON_ERR(pool, EXIT_FAILURE, "[Memory Manager] re-initialization of the manager was attempted");
 
@@ -17,6 +17,8 @@ namespace ChiroBat
 			packedFLI = SLbitDepth + bitPack - 1; // 6 | 8
 
 			bitPackMask = ~(size_t)0 << bitPack;
+
+			poolSize = poolSize < sizeof(Pool) ? sizeof(Pool) : poolSize;
 
 			FLmax = findMSB(poolSize);
 
@@ -35,6 +37,7 @@ namespace ChiroBat
 			memset(slMasks, 0, (FLmax + 1) * sizeof(size_t));
 			flMask = 0;
 
+			this->expand = expand;
 			pool = nullptr;
 			addPool();
 
@@ -158,6 +161,7 @@ namespace ChiroBat
 
 		funcRet MemoryManager::addPool()
 		{
+			RET_ON_ERR(!expand && pool, EXIT_FAILURE, "[Memory Manager] the allocator is set to not expand, no more memory can be added");
 			RET_ON_ERR(!poolSize, EXIT_FAILURE, "[Memory Manager] attempted to expand the pool chain with no pool size");
 
 			Pool* temp = (Pool*)_mm_malloc(poolSize, alignof(Pool*));

@@ -4,6 +4,30 @@
 
 using namespace ChiroBat;
 
+#define MAKE_DATA(type, count) (type*)MEMORY.malloc(sizeof(type) * count)
+#define MAKE_DATA_ZERO(type, count) (type*)MEMORY.calloc(sizeof(type) * count)
+
+#define SET_DATA(data, count, offset) \
+do \
+{ \
+if (data) \
+for (size_t i = 0; i < count; ++i) \
+	data[i] = offset + i; \
+} while(0)
+
+#define PRINT_DATA(data, count) \
+do \
+{ \
+if (data) \
+{ \
+	printf("\tnow printing %s\n", #data); \
+	for (size_t i = 0; i < count; ++i) \
+		printf("%s[%d] = %d\n", #data, i, data[i]); \
+} \
+} while(0)
+
+#define FREE_DATA(data) if(data) MEMORY.free(data)
+
 int main()
 {
 	funcRet engineState;
@@ -11,38 +35,17 @@ int main()
 	engineState = ENGINE.init();
 	RET_ON_ERR(engineState, EXIT_FAILURE, "[Main] Engine failed to initialize");
 
-	printf("beep boop\n");
-
-	//for (size_t i = 0; i < sizeof(size_t) * 8; ++i)
-	//{
-	//	size_t a = (size_t)1 << i;
-	//	printf("b %zu: MSB %d: LSB %d\n", i, MEMORY.findMSB(a), MEMORY.findLSB(a));
-	//}
-
-	// problems:
-	// 1) over-stepping responsibilities between functions
-	// 2) no "don't grow" option
-
-#define TYPE int
-
-	size_t dataCount = 13;
-	TYPE* data = (TYPE*)MEMORY.malloc(sizeof(TYPE) * dataCount);
-	TYPE* data2 = (TYPE*)MEMORY.calloc(sizeof(TYPE) * dataCount);
+	int* data = MAKE_DATA(int, 14);
+	char* data2 = MAKE_DATA_ZERO(char, 41);
 	
-	for (TYPE i = 0; i < dataCount; ++i)
-	{
-		data[i] = i;
-		data2[i] += dataCount + i;
-	}
+	SET_DATA(data, 14, 0);
+	SET_DATA(data2, 41, 14);
 	
-	for (TYPE i = 0; i < dataCount; ++i)
-		printf("%d: %d\n", i, data[i]);
-
-	for (TYPE i = 0; i < dataCount; ++i)
-		printf("%d: %d\n", i, data2[i]);
+	PRINT_DATA(data, 14);
+	PRINT_DATA(data2, 41);
 	
-	MEMORY.free(data);
-	MEMORY.free(data2);
+	FREE_DATA(data);
+	FREE_DATA(data2);
 
 	engineState = ENGINE.shutDown();
 	RET_ON_ERR(engineState, EXIT_FAILURE, "[Main] Engine failed to shutdown");

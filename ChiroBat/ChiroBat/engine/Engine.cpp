@@ -10,7 +10,7 @@ namespace ChiroBat
 		{
 			funcRet systemState;
 			
-			systemState = MEMORY.init(1024 - 1);
+			systemState = MEMORY.init(1024, true);
 			RET_ON_ERR(systemState, EXIT_FAILURE, "[Engine] Memory failed to initialize");
 
 			return EXIT_SUCCESS;

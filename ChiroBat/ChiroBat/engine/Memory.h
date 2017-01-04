@@ -13,7 +13,7 @@ namespace ChiroBat
 		class MemoryManager : public Patterns::Singleton<MemoryManager>
 		{
 		public:
-			funcRet init(size_t poolSize);
+			funcRet init(size_t poolSize, bool expand);
 			funcRet shutDown();
 
 			int findMSB(size_t n);
@@ -64,6 +64,7 @@ namespace ChiroBat
 			size_t bitPackMask;
 			byte FLmax;
 			byte minBlockSize;
+			byte expand;
 
 			Pool* pool;
 			Block** freeBlocks;
