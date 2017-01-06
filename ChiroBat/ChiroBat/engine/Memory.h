@@ -16,8 +16,10 @@ namespace ChiroBat
 			funcRet init(size_t poolSize, bool expand);
 			funcRet shutDown();
 
-			int findMSB(size_t n);
-			int findLSB(size_t n);
+			template <typename T>
+			int findMSB(T n);
+			template <typename T>
+			int findLSB(T n);
 
 			void* malloc(size_t size);
 			void* calloc(size_t size);
@@ -62,7 +64,6 @@ namespace ChiroBat
 			byte bitPack;
 			byte packedFLI;
 			size_t bitPackMask;
-			byte FLmax;
 			byte minBlockSize;
 			byte expand;
 
@@ -80,6 +81,34 @@ namespace ChiroBat
 			Block* getBlock(size_t size);
 			size_t blockSize(Block* block);
 		};
+
+		template <typename T>
+		int MemoryManager::findMSB(T n)
+		{
+			if (!n)
+				return -1;
+
+			constexpr int mid = (sizeof(T) << 2) - 1;
+			constexpr int index = sizeof(T) - (sizeof(T) == 4) - ((sizeof(T) == 8) << 2);
+			constexpr int steps[6] = { 1, 2, 4, 8, 16, 32 };
+			int ret = mid;
+			int i = index;
+			T test;
+
+			while ((test = n >> ret) - 1)
+			{
+				ret -= steps[i] - (steps[i + 1] & (!test - 1));
+				i -= !!i;
+			}
+
+			return ret;
+		}
+
+		template <typename T>
+		int MemoryManager::findLSB(T n)
+		{
+			return findMSB(n & (~n + 1));
+		}
 	}
 }
 

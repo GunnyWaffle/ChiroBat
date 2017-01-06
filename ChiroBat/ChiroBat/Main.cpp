@@ -4,30 +4,6 @@
 
 using namespace ChiroBat;
 
-#define MAKE_DATA(type, count) (type*)MEMORY.malloc(sizeof(type) * count)
-#define MAKE_DATA_ZERO(type, count) (type*)MEMORY.calloc(sizeof(type) * count)
-
-#define SET_DATA(data, count, offset) \
-do \
-{ \
-if (data) \
-for (size_t i = 0; i < count; ++i) \
-	data[i] = offset + i; \
-} while(0)
-
-#define PRINT_DATA(data, count) \
-do \
-{ \
-if (data) \
-{ \
-	printf("\tnow printing %s\n", #data); \
-	for (size_t i = 0; i < count; ++i) \
-		printf("%s[%d] = %d\n", #data, i, data[i]); \
-} \
-} while(0)
-
-#define FREE_DATA(data) if(data) MEMORY.free(data)
-
 int main()
 {
 	funcRet engineState;
@@ -35,17 +11,41 @@ int main()
 	engineState = ENGINE.init();
 	RET_ON_ERR(engineState, EXIT_FAILURE, "[Main] Engine failed to initialize");
 
-	int* data = MAKE_DATA(int, 14);
-	char* data2 = MAKE_DATA_ZERO(char, 41);
+	//for (size_t i = 0; i < sizeof(size_t) * 8; ++i)
+	//{
+	//	int b = MEMORY.findMSB((size_t)1 << i);
+	//
+	//	if (b != i)
+	//		printf("bit-%zu MSB-%d\n", i, b);
+	//}
+
+	int* data = (int*)MEMORY.malloc(sizeof(int) * 14);
+	char* data2 = (char*)MEMORY.calloc(sizeof(char) * 41);
 	
-	SET_DATA(data, 14, 0);
-	SET_DATA(data2, 41, 14);
+	if (data)
+		for (int i = 0; i < 14; ++i)
+			data[i] = i;
+
+	if (data2)
+		for (char i = 0; i < 41; ++i)
+			data2[i] = 14 + i;
 	
-	PRINT_DATA(data, 14);
-	PRINT_DATA(data2, 41);
+	if (data)
+	{
+		printf("\tnow printing data\n");
+		for (size_t i = 0; i < 14; ++i)
+			printf("data[%d] = %d\n", i, data[i]);
+	}
+
+	if (data2)
+	{
+		printf("\tnow printing data2\n");
+		for (size_t i = 0; i < 41; ++i)
+			printf("data2[%d] = %d\n", i, data2[i]);
+	}
 	
-	FREE_DATA(data);
-	FREE_DATA(data2);
+	if (data) MEMORY.free(data);
+	if (data2) MEMORY.free(data2);
 
 	engineState = ENGINE.shutDown();
 	RET_ON_ERR(engineState, EXIT_FAILURE, "[Main] Engine failed to shutdown");

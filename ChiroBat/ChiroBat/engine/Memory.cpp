@@ -20,7 +20,7 @@ namespace ChiroBat
 
 			poolSize = poolSize < sizeof(Pool) ? sizeof(Pool) : poolSize;
 
-			FLmax = findMSB(poolSize);
+			byte FLmax = findMSB(poolSize);
 
 			maxRequestSize = (((size_t)1 << (FLmax + 1)) - 1) & bitPackMask;
 			minBlockSize = sizeof(Block*) * 3;
@@ -63,25 +63,6 @@ namespace ChiroBat
 			pool = nullptr;
 
 			return EXIT_SUCCESS;
-		}
-
-		int MemoryManager::findMSB(size_t n)
-		{
-			if (!n)
-				return -1;
-
-			int ret = sizeof(size_t) * 4 - 1;
-			int step = ret;
-			
-			while ((n >> ret) - 1)
-				ret += (++step >>= 1) * ((((n >> ret) > 0) << 1) - 1);
-
-			return ret;
-		}
-
-		int MemoryManager::findLSB(size_t n)
-		{
-			return findMSB(n & (~n + 1));
 		}
 
 		void* MemoryManager::malloc(size_t size)
