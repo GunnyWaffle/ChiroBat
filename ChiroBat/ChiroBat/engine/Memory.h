@@ -6,6 +6,9 @@
 
 #define MEMORY ChiroBat::Memory::MemoryManager::instance()
 
+// This allocator is heavily based upon the TLSF memory allocation approach
+// implemented from reading the white papers
+
 namespace ChiroBat
 {
 	namespace Memory
@@ -13,23 +16,26 @@ namespace ChiroBat
 		class MemoryManager : public Patterns::Singleton<MemoryManager>
 		{
 		public:
+			// initialize the memory manager
+			// poolsize - the poolsize to use, will be rounded up to the max supported from this size
+			// expand - if true, new pools will be allocated as needed
 			funcRet init(size_t poolSize, bool expand);
-			funcRet shutDown();
+			funcRet shutDown(); // shutdown the memory manager
 
 			template <typename T>
-			int findMSB(T n);
+			int findMSB(T n); // find the index of the most significant bit
 			template <typename T>
-			int findLSB(T n);
+			int findLSB(T n); // find the index of the least significant bit
 
-			void* malloc(size_t size);
-			void* calloc(size_t size);
-			void* alignMalloc(size_t size, size_t align);
-			void* alignCalloc(size_t size, size_t align);
-			funcRet free(void* pointer);
+			void* malloc(size_t size); // allocate memory from the pool
+			void* calloc(size_t size); // allocate memory from the pool, and init to 0s
+			void* alignMalloc(size_t size, size_t align); // allocate aligned memory from the pool
+			void* alignCalloc(size_t size, size_t align); // allocate aligned memory from the pool, and init to 0s
+			funcRet free(void* pointer); // free memory allocated from the pool
 			
 		private:
 			struct Block;
-			struct FreeList // packed linker pointers
+			struct FreeList // packed linked list pointers
 			{
 				Block* prev; // previous block in this bin
 				Block* next; // next block in this bin
@@ -56,49 +62,73 @@ namespace ChiroBat
 				byte sl; // the second layer index
 			};
 
-			size_t maxRequestSize;
-			size_t poolSize;
+			size_t maxRequestSize; // maximum memory request size for allocation
+			size_t poolSize; // the size of each memory pool
 
-			byte SLgranularity;
-			byte SLbitDepth;
-			byte bitPack;
-			byte packedFLI;
-			size_t bitPackMask;
-			byte minBlockSize;
-			byte expand;
+			byte SLgranularity; // the bit size of the machine, used for the second layer granularity
+			byte SLbitDepth; // the power of 2 needed for the bit size
+			byte bitPack; // the number of bits in size lost to alignment, used for metadata
+			byte packedFLI; // the minimum MSB value needed to exceed a first layer index of 0
+			size_t bitPackMask; // helper value for masking out the unused bits in size
+			byte minBlockSize; // minimum memory request size for allocation
+			byte expand; // 1 - expand, 0 - do not expand
 
-			Pool* pool;
-			Block** freeBlocks;
-			size_t flMask;
-			size_t* slMasks;
+			Pool* pool; // the tail of the pool linked list
+			Block** freeBlocks; // the free blocks array
+			size_t flMask; // the first layer mask
+			size_t* slMasks; // the second layer masks
 
-			funcRet addPool();
+			funcRet addPool(); // adds a new pool to the allocator
+							   
+			// adds a freed block to the free blocks array
+			// block - the block to add
 			void addBlock(Block* block);
+			
+			// removes a block from the free blocks array
+			// block - the block to remove
 			void removeBlock(Block* block);
+			
+			// split a block, if possible, adding the new block into the free blocks array
+			// block - the block to split
+			// size - the new size of the block
 			funcRet splitBlock(Block* block, size_t size);
+
+			// get the next neihgboring block in memory
+			// block - the block to seek from
+			// next - the block to assign to
 			funcRet getNextBlock(Block* block, Block** next);
+
+			// get the free blocks index for a size request
+			// size - the block size needed
+			// index - the index info to write to
 			funcRet getIndex(size_t size, MapIndex* index);
+
+			// get a block from the free blocks array
+			// size - minimum size to search for
 			Block* getBlock(size_t size);
+
+			// get the size of a block
+			// block - the block in question
 			size_t blockSize(Block* block);
 		};
 
 		template <typename T>
 		int MemoryManager::findMSB(T n)
 		{
-			if (!n)
+			if (!n) // 0 check case
 				return -1;
 
-			constexpr int mid = (sizeof(T) << 2) - 1;
-			constexpr int index = sizeof(T) - (sizeof(T) == 4) - ((sizeof(T) == 8) << 2);
-			constexpr int steps[6] = { 1, 2, 4, 8, 16, 32 };
-			int ret = mid;
-			int i = index;
+			constexpr int mid = (sizeof(T) << 2) - 1; // middle of the binary tree
+			constexpr int index = sizeof(T) - (sizeof(T) == 4) - ((sizeof(T) == 8) << 2); // stepping index
+			constexpr int steps[6] = { 1, 2, 4, 8, 16, 32 }; // steps for the tree search
+			int ret = mid; // start in the middle
+			int i = index; // step from the index
 			T test;
 
-			while ((test = n >> ret) - 1)
+			while ((test = n >> ret) - 1) // while the MSB has not been found
 			{
-				ret -= steps[i] - (steps[i + 1] & (!test - 1));
-				i -= !!i;
+				ret -= steps[i] - (steps[i + 1] & (!test - 1)); // step
+				i -= !!i; // decrement the step
 			}
 
 			return ret;
@@ -107,7 +137,7 @@ namespace ChiroBat
 		template <typename T>
 		int MemoryManager::findLSB(T n)
 		{
-			return findMSB(n & (~n + 1));
+			return findMSB(n & (~n + 1)); // mask out the LSB and use MSB to find it
 		}
 	}
 }

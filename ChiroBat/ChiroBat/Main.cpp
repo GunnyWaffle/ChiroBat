@@ -20,28 +20,28 @@ int main()
 	//}
 
 	int* data = (int*)MEMORY.malloc(sizeof(int) * 14);
-	char* data2 = (char*)MEMORY.calloc(sizeof(char) * 41);
+	char* data2 = (char*)MEMORY.calloc(sizeof(char) * 43);
 	
 	if (data)
 		for (int i = 0; i < 14; ++i)
 			data[i] = i;
 
 	if (data2)
-		for (char i = 0; i < 41; ++i)
-			data2[i] = 14 + i;
+		for (char i = 0; i < 43; ++i)
+			data2[i] = 48 + i;
 	
 	if (data)
 	{
 		printf("\tnow printing data\n");
 		for (size_t i = 0; i < 14; ++i)
-			printf("data[%d] = %d\n", i, data[i]);
+			printf("data[%zu] = %d\n", i, data[i]);
 	}
 
 	if (data2)
 	{
 		printf("\tnow printing data2\n");
-		for (size_t i = 0; i < 41; ++i)
-			printf("data2[%d] = %d\n", i, data2[i]);
+		for (size_t i = 0; i < 43; ++i)
+			printf("data2[%zu] = %c\n", i, data2[i]);
 	}
 	
 	if (data) MEMORY.free(data);
